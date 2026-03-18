@@ -16,10 +16,8 @@
 (function () {
     var visName;
     this.changeVis = async function () {
-        console.log("changeVis");
         visName = getVisName();
         const isAsset = await manageIframe(visName);
-        console.log("visName: " + visName);
         if (!isAsset) {
             await fetchAndInjectScripts(visName);
         }
@@ -35,11 +33,9 @@
         if (visType.value.includes("-")) {
             let index = visType.value.indexOf("-")
             let visName = visType.value.substring(0, index);
-            console.log("visName with - : " + visName + "; originally " + visType.value);
             return visName;
         } else {
             let visName = visType.value;
-            console.log("visName without - : " + visName);
             return visName;
         }
     }
@@ -84,13 +80,10 @@
     }
 
     async function findAssetIndex(visName) {
-        console.log("Looking for path-assets folder for " + visName);
-
         const baseUrl = "../stroom_content/Visualisations/Version3";
         const visFiles = await fetchFileList(baseUrl);
         const folderPattern = new RegExp(`^${visName}\.Visualisation\.[-0-9a-fA-F]{36}-path-assets/$`);
         const assetDir = visFiles.find(file => folderPattern.test(file));
-        console.log("assetDir: " + assetDir);
         if (assetDir) {
             console.log("Found asset directory: " + assetDir + "; looking for index.html");
             // Got the asset directory; now look for index.html
@@ -109,7 +102,6 @@
     }
 
     async function manageIframe(visName) {
-        console.log("manageIframe: " + visName);
 
         // If the asset index.html exists then load it; otherwise load default vis.html
         var isAsset = true;
@@ -130,14 +122,12 @@
         // Append a random query string to force the browser to fetch a new document
         newIframe.src = pathToIframeHtml + '?' + new Date().getTime();
         document.getElementById('iframe').appendChild(newIframe);
-        console.log("newIframe: " + newIframe);
         const iframeWindow = newIframe.contentWindow;
-        // iframeWindow.addEventListener("message", (message)=> { console.log(`iFrameWindow Message: ${message.data}`); });
         this.addEventListener("message", (message) => {
 
             document.getElementById("events").innerHTML = JSON.stringify(JSON.parse(message.data), undefined, 4);
             document.getElementById("eventsLabel").innerText = `At ${new Date().toLocaleTimeString()}:`;
-            console.log(`content window Message: ${message.data}`);
+            //console.log(`Content window message: ${message.data}`);
         });
 
         loadedScripts.clear();
@@ -151,7 +141,6 @@
     let pendingFetches = 0;
 
     async function fetchAndInjectScripts(visName) {
-        console.log("fetchAndInjectScripts: " + visName);
 
         // Check if script is already loaded
         if (loadedScripts.has(visName)) {
@@ -163,17 +152,13 @@
         console.log("Fetching scripts for: " + visName);
         pendingFetches++;
         try {
-            console.log("Calling fetchAndParseMeta");
             // Don't load met or dependencies if this is an asset
             const { metaText, url } = await fetchAndParseMeta(visName);
-            console.log("Calling loadDependencies");
             const scripts = await loadDependencies(metaText, url, visName);
             scriptQueue = scriptQueue.concat(scripts);
             // Mark the script as loaded after dependencies are processed
-            console.log("Marking script as loaded: " + visName);
             loadedScripts.add(visName);
             pendingFetches--;
-            console.log("Calling checkAndAssembleScripts");
             checkAndAssembleScripts();
         } catch (error) {
             console.error("Failed to fetch and inject scripts:", error);
@@ -186,14 +171,12 @@
     async function fetchFileList(directory) {
         const apiEndpoint = `*/${directory}`;
         try {
-            console.log("fetchFileList: " + apiEndpoint);
 
             const response = await fetch(apiEndpoint);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const text = await response.text();
-            //console.log("text: " + text);
             // Parse the HTML and extract the href attributes
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
@@ -208,7 +191,6 @@
     // this isn't the best
     // as leafletDraw folder has LeafletDrawCSS.script.resource.js etc
     async function dependencyUrls(visName) {
-        console.log("dependencyUrls: " + visName);
         const baseName = visName.split('.')[0];
         const baseUrls = [
             "../stroom_content/Visualisations/Version3",
@@ -220,9 +202,7 @@
         let urls = [];
         for (const baseUrl of baseUrls) {
             try {
-                console.log("dependencyUrls: " + visName + "; checking " + baseUrl);
                 const url = await getMetaFile(baseName, baseUrl);
-                console.log("dependencyUrls: " + visName + "; baseUrl: " + baseUrl + "; found " + url);
                 if (url) {
                     urls.push(url);
                     break; // Exit the loop as soon as a valid URL is found
@@ -238,17 +218,14 @@
      * Gets the functionName value from the .Visualisation*.meta file.
      */
     async function getVisMetaFileFunctionName(baseName, directory) {
-        console.log("getVisMetaFile: " + baseName + "; directory: " + directory);
         try {
             const files = await fetchFileList(directory);
             const pattern = new RegExp(`^${baseName}\.Visualisation\.[-a-fA-F0-9]{36}\.meta$`);
             const visMetaFile = files.find(file => pattern.test(file));
 
-            console.log("getVisMetaFile: " + baseName + "; directory: " + directory + "; metaFile: " + visMetaFile);
             if (visMetaFile) {
                 const visMetaResponse = await fetch(directory + "/" + visMetaFile);
                 const visMetaText = await visMetaResponse.text();
-                console.log("visMetaText: " + visMetaText);
                 const visMeta = JSON.parse(visMetaText);
                 return visMeta.functionName;
             }
@@ -261,13 +238,10 @@
     }
 
     async function getMetaFile(baseName, directory) {
-        console.log("getMetaFile: " + baseName + "; directory: " + directory);
         try {
             const files = await fetchFileList(directory);
-            //console.log("getMetaFile: " + baseName + "; directory: " + directory + "; files: " + files);
             const pattern = new RegExp(`^${baseName}\\.Script\\.[a-fA-F0-9-]{36}\\.meta$`);
             const metaFile = files.find(file => pattern.test(file));
-            console.log("getMetaFile: " + baseName + "; directory: " + directory + "; metaFile: " + metaFile);
             if (!metaFile) {
                 console.log(`No .meta file found for ${baseName} in ${directory}.`);
                 return null; // Return null if no meta file is found
@@ -281,16 +255,13 @@
 
     async function fetchAndParseMeta(visName) {
         try {
-            console.log("fetchAndParseMeta: " + visName + "; calling dependencyUrls");
             const urls = await dependencyUrls(visName);
             const fetchPromises = urls.map(async url => {
-                console.log("fetchAndParseMeta: " + visName + "; fetching " + url);
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`Fetch failed for ${url}. Status: ${response.status}`);
                 }
                 const metaText = await response.text();
-                console.log("fetchAndParseMeta: " + visName + "; metaText: " + metaText);
                 return { metaText, url };
             });
 
@@ -360,7 +331,6 @@
                 uniqueScripts.push(visScript);
             }
 
-            console.log(uniqueScripts);
             assembleAndPostJSON(uniqueScripts);
             loadedScripts = new Set();
             scriptQueue = [];
@@ -395,7 +365,6 @@
     async function setVisType() {
         vis = visName;
         const functionName = await getVisMetaFileFunctionName(visName, "../stroom_content/Visualisations/Version3/");
-        console.log("Setting functionname to " + functionName);
         const iframe = document.getElementById('myIframe');
         const iframeWindow = iframe.contentWindow;
         let json = {
